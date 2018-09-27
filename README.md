@@ -1,4 +1,6 @@
 
+<b>Encoder / Decoder NN Model Experiments</b>
+
 This repository contains experiments with Neural Machine Translation and Neural Text Recognition with the goal to explore similarities in the systems. 
 
 <b>Neural Text Recognition</b>
