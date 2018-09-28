@@ -11,6 +11,7 @@ from sklearn.model_selection import learning_curve
 from sklearn import metrics
 
 import torch
+from torch import nn
 import torch.utils.data
 import torchvision.transforms as transforms
 
@@ -131,12 +132,127 @@ class Metric(object):
         for m in state_dict:
             self.values[m] = state_dict[m]
 
+#######################################################################################################################
+import copy
+
+class Stopping(object):
+    """
+        Class implement some of regularization techniques to avoid over-training as described in
+        http://page.mi.fu-berlin.de/prechelt/Biblio/stop_tricks1997.pdf
+        """
+    def __init__(self, model, patience=50):
+        self.model = model
+        self.patience = patience
+        
+        self.initalize()
+    
+    def initalize(self):
+        self.best_score = -1
+        self.best_score_epoch = 0
+        self.best_score_model = None
+        self.best_score_state = None
+    
+    def step(self, epoch, valid_score):
+        if valid_score > self.best_score:
+            self.best_score = valid_score
+            self.best_score_epoch = epoch
+            self.best_score_state = copy.deepcopy(self.model.state_dict())
+            return False
+        elif self.best_score_epoch + self.patience < epoch:
+            return True
+
+def state_dict(self):
+    return {
+        'patience' : self.patience,
+            'best_score' : self.best_score,
+            'best_score_epoch' : self.best_score_epoch,
+            'best_score_state' : self.best_score_state,
+    }
+
+def load_state_dict(self, state_dict):
+    self.patience = state_dict['patience']
+    self.best_score  = state_dict['best_score']
+    self.best_score_epoch = state_dict['best_score_epoch']
+    self.best_score_state = state_dict['best_score_state']
+    
+    def __repr__(self):
+        fmt_str = self.__class__.__name__ + '\n'
+        fmt_str += '    Patience: {}\n'.format(self.patience)
+        fmt_str += '    Best Score: {}\n'.format(self.best_score)
+        fmt_str += '    Epoch of Best Score: {}\n'.format(self.best_score_epoch)
+        return fmt_str
+
+###################################################################################################################
+
+# https://gist.github.com/jeasinema/ed9236ce743c8efaf30fa2ff732749f5
+
+def torch_weight_init(m):
+    """
+        Usage:
+        model = Model()
+        model.apply(weight_init)
+        """
+    if isinstance(m, nn.Conv1d):
+        init.normal(m.weight.data)
+        init.normal(m.bias.data)
+    elif isinstance(m, nn.Conv2d):
+        init.xavier_normal(m.weight.data)
+        init.normal(m.bias.data)
+    elif isinstance(m, nn.Conv3d):
+        init.xavier_normal(m.weight.data)
+        init.normal(m.bias.data)
+    elif isinstance(m, nn.ConvTranspose1d):
+        init.normal(m.weight.data)
+        init.normal(m.bias.data)
+    elif isinstance(m, nn.ConvTranspose2d):
+        init.xavier_normal(m.weight.data)
+        init.normal(m.bias.data)
+    elif isinstance(m, nn.ConvTranspose3d):
+        init.xavier_normal(m.weight.data)
+        init.normal(m.bias.data)
+    elif isinstance(m, nn.BatchNorm1d):
+        init.normal(m.weight.data, mean=1, std=0.02)
+        init.constant(m.bias.data, 0)
+    elif isinstance(m, nn.BatchNorm2d):
+        init.normal(m.weight.data, mean=1, std=0.02)
+        init.constant(m.bias.data, 0)
+    elif isinstance(m, nn.BatchNorm3d):
+        init.normal(m.weight.data, mean=1, std=0.02)
+        init.constant(m.bias.data, 0)
+    elif isinstance(m, nn.Linear):
+        init.xavier_normal(m.weight.data)
+        init.normal(m.bias.data)
+    elif isinstance(m, nn.LSTM):
+        for param in m.parameters():
+            if len(param.shape) >= 2:
+                init.orthogonal(param.data)
+            else:
+                init.normal(param.data)
+    elif isinstance(m, nn.LSTMCell):
+        for param in m.parameters():
+            if len(param.shape) >= 2:
+                init.orthogonal(param.data)
+            else:
+                init.normal(param.data)
+    elif isinstance(m, nn.GRU):
+        for param in m.parameters():
+            if len(param.shape) >= 2:
+                init.orthogonal(param.data)
+            else:
+                init.normal(param.data)
+    elif isinstance(m, nn.GRUCell):
+        for param in m.parameters():
+            if len(param.shape) >= 2:
+                init.orthogonal(param.data)
+            else:
+                init.normal(param.data)
+
 ###################################################################################################################
 
 def plot_learning_curves(m, loss_ylim=(0, 1.0), score_ylim=(0.0, 1.0), figsize=(14,6)):
     train_loss = m.values['train_loss'] if 'train_loss' in m.values else None
     train_score = m.values['valid_ppl'] if 'valid_ppl' in m.values else None
-    train_lr = clf.m_.values['train_lr'] if 'train_lr' in m.values else None
+    train_lr = m.values['train_lr'] if 'train_lr' in m.values else None
     valid_loss = m.values['valid_loss'] if 'valid_loss' in m.values else None
     valid_ppl = m.values['valid_ppl'] if 'valid_ppl' in m.values else None
     valid_score = m.values['valid_score'] if 'valid_score' in m.values else None
